@@ -21,7 +21,7 @@ func NewTuner() *Tuner {
 }
 
 // Tune computes the new values for the controller based on its use
-func (t *Tuner) Tune(controller *entities.Controller, cpuMetrics []int) *entities.Controller {
+func (t *Tuner) tune(controller *entities.Controller, cpuMetrics []int) *entities.Controller {
 	if len(cpuMetrics) < t.minimumValuesToTune {
 		return controller
 	}

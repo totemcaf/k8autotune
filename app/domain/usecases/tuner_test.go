@@ -12,12 +12,12 @@ func TestTuner_tuneOne_UseMaxPlusMargenIfValueIsSmallerThanMaximunMargen(t *test
 	// Arrange
 	tuner := NewTuner()
 
-	controller := &entities.Controller{}
-	max := 70
-	metrics := append([]int{5, 5, max, 20, 10}, makeInt(tuner.minimumValuesToTune, 9)...)
+	controller := makeController(10)
+
+	metrics := makeMetrics(70, tuner.minimumValuesToTune)
 
 	// Act
-	controllerTuned := tuner.Tune(controller, metrics)
+	controllerTuned := tuner.tune(controller, metrics)
 
 	// Assert
 	assert.Equal(t, 84, controllerTuned.Resource.Requests.CPU)
@@ -27,12 +27,13 @@ func TestTuner_tuneOne_UseMaxPlusMaximumMargenIfValueIsGratherThanMaximunMargen(
 	// Arrange
 	tuner := NewTuner()
 
-	controller := &entities.Controller{}
+	controller := makeController(10)
+
 	max := rand.Intn(100) + 1010
-	metrics := append([]int{500, 500, max, 200, 100}, makeInt(tuner.minimumValuesToTune, 9)...)
+	metrics := makeMetrics(max, tuner.minimumValuesToTune)
 
 	// Act
-	controllerTuned := tuner.Tune(controller, metrics)
+	controllerTuned := tuner.tune(controller, metrics)
 
 	// Assert
 	assert.Equal(t, max+200, controllerTuned.Resource.Requests.CPU)
@@ -43,11 +44,11 @@ func TestTuner_tuneOne_NotEnoughMetricsToChange(t *testing.T) {
 	tuner := NewTuner()
 
 	currentValue := 7
-	controller := &entities.Controller{Resource: entities.Resource{Requests: entities.ResouceValues{CPU: currentValue}}}
-	metrics := []int{5, 5, 8, 20, 10}
+	controller := makeController(currentValue)
+	metrics := makeMetrics(20, tuner.minimumValuesToTune/2)
 
 	// Act
-	controllerTuned := tuner.Tune(controller, metrics)
+	controllerTuned := tuner.tune(controller, metrics)
 
 	// Assert
 	assert.Equal(t, currentValue, controllerTuned.Resource.Requests.CPU)
@@ -57,12 +58,11 @@ func TestTuner_tuneOne_IncreaseLimit(t *testing.T) {
 	// Arrange
 	tuner := NewTuner()
 
-	currentValue := 7
-	controller := &entities.Controller{Resource: entities.Resource{Requests: entities.ResouceValues{CPU: currentValue}}}
-	metrics := append([]int{500, 500, 1800, 200, 100}, makeInt(tuner.minimumValuesToTune, 9)...)
+	controller := makeController(7)
+	metrics := makeMetrics(1800, tuner.minimumValuesToTune)
 
 	// Act
-	controllerTuned := tuner.Tune(controller, metrics)
+	controllerTuned := tuner.tune(controller, metrics)
 
 	// Assert
 	assert.True(t, controllerTuned.Resource.Requests.CPU < controllerTuned.Resource.Limits.CPU)
@@ -76,4 +76,18 @@ func makeInt(size int, defaultValue int) []int {
 	}
 
 	return a
+}
+
+func makeMetrics(max int, values int) []int {
+	return append([]int{max * 50 / 100, max * 50 / 100, max, max * 90 / 100, max * 80 / 100}, makeInt(values, 9)...)
+}
+
+func makeController(currentCPUValue int) *entities.Controller {
+	return &entities.Controller{
+		Resource: entities.Resource{
+			Requests: entities.ResouceValues{
+				CPU: currentCPUValue,
+			},
+		},
+	}
 }
