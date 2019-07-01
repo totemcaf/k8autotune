@@ -6,6 +6,12 @@ The current *resources* spec is taken from the POD controller and K8AutoTune wil
 
 Different strategies will be allowed to decide the best value for each use profile.
 
+# Mocks
+
+To recreate mocks do:
+
+    $GOPATH/bin/mockery --all
+
 # Roadmap
 
 ## Version 0.1

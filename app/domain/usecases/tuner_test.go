@@ -5,71 +5,75 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/totemcaf/k8autotune.git/app/domain/entities"
+	"github.com/totemcaf/k8autotune/app/domain/entities"
 )
+
+const containerName1 = "cont-one"
+const namespace1 = "namespace-one"
+const controllerName1 = "controller-one"
 
 func TestTuner_tuneOne_UseMaxPlusMargenIfValueIsSmallerThanMaximunMargen(t *testing.T) {
 	// Arrange
 	tuner := NewTuner()
 
-	controller := makeController(10)
+	controller := makeContainer(10)
 
 	metrics := makeMetrics(70, tuner.minimumValuesToTune)
 
 	// Act
-	controllerTuned := tuner.tune(controller, metrics)
+	containerTuned := tuner.tune(controller, metrics)
 
 	// Assert
-	assert.Equal(t, 84, controllerTuned.Resource.Requests.CPU)
+	assert.Equal(t, int64(84), containerTuned.Resource.Requests.CPU)
 }
 
 func TestTuner_tuneOne_UseMaxPlusMaximumMargenIfValueIsGratherThanMaximunMargen(t *testing.T) {
 	// Arrange
 	tuner := NewTuner()
 
-	controller := makeController(10)
+	controller := makeContainer(10)
 
-	max := rand.Intn(100) + 1010
+	max := int64(rand.Intn(100) + 1010)
 	metrics := makeMetrics(max, tuner.minimumValuesToTune)
 
 	// Act
-	controllerTuned := tuner.tune(controller, metrics)
+	containerTuned := tuner.tune(controller, metrics)
 
 	// Assert
-	assert.Equal(t, max+200, controllerTuned.Resource.Requests.CPU)
+	assert.Equal(t, max+200, containerTuned.Resource.Requests.CPU)
 }
 
 func TestTuner_tuneOne_NotEnoughMetricsToChange(t *testing.T) {
 	// Arrange
 	tuner := NewTuner()
 
-	currentValue := 7
-	controller := makeController(currentValue)
+	const currentValue int64 = 7
+	container := makeContainer(currentValue)
 	metrics := makeMetrics(20, tuner.minimumValuesToTune/2)
 
 	// Act
-	controllerTuned := tuner.tune(controller, metrics)
+	containerTuned := tuner.tune(container, metrics)
 
 	// Assert
-	assert.Equal(t, currentValue, controllerTuned.Resource.Requests.CPU)
+	assert.Equal(t, currentValue, containerTuned.Resource.Requests.CPU)
 }
 
 func TestTuner_tuneOne_IncreaseLimit(t *testing.T) {
 	// Arrange
 	tuner := NewTuner()
 
-	controller := makeController(7)
+	controller := makeContainer(7)
 	metrics := makeMetrics(1800, tuner.minimumValuesToTune)
 
 	// Act
-	controllerTuned := tuner.tune(controller, metrics)
+	containerTuned := tuner.tune(controller, metrics)
 
 	// Assert
-	assert.True(t, controllerTuned.Resource.Requests.CPU < controllerTuned.Resource.Limits.CPU)
+	assert.True(t, containerTuned.Resource.Requests.CPU < containerTuned.Resource.Limits.CPU)
 }
 
-func makeInt(size int, defaultValue int) []int {
-	a := make([]int, size)
+func makeInt64(size int, defaultValue int64) []int64 {
+	a := make([]int64, size)
 
 	for i := range a {
 		a[i] = defaultValue
@@ -78,12 +82,12 @@ func makeInt(size int, defaultValue int) []int {
 	return a
 }
 
-func makeMetrics(max int, values int) []int {
-	return append([]int{max * 50 / 100, max * 50 / 100, max, max * 90 / 100, max * 80 / 100}, makeInt(values, 9)...)
+func makeMetrics(max int64, values int) []int64 {
+	return append([]int64{max * 50 / 100, max * 50 / 100, max, max * 90 / 100, max * 80 / 100}, makeInt64(values, 9)...)
 }
 
-func makeController(currentCPUValue int) *entities.Controller {
-	return &entities.Controller{
+func makeContainer(currentCPUValue int64) *entities.Container {
+	return &entities.Container{
 		Resource: entities.Resource{
 			Requests: entities.ResouceValues{
 				CPU: currentCPUValue,

@@ -7,11 +7,9 @@ import (
 	logs "github.com/sirupsen/logrus"
 
 	"github.com/stretchr/testify/mock"
-	"github.com/totemcaf/k8autotune.git/app/domain/entities"
-	"github.com/totemcaf/k8autotune.git/mocks"
+	"github.com/totemcaf/k8autotune/app/domain/entities"
+	"github.com/totemcaf/k8autotune/mocks"
 )
-
-const namespace1 = "ns1"
 
 func TestTuneManager_TuneNamespace_NoDeployments(t *testing.T) {
 	// Arrange
@@ -39,7 +37,7 @@ func TestTuneManager_TuneNamespace_DeploymentWithNoPods(t *testing.T) {
 
 	pr := new(mocks.PodRepository)
 
-	d := entities.NewController(pr)
+	d := entities.NewController0(pr)
 
 	cr.On("FindDeploymentsInNamespace", namespace1).Return([]*entities.Controller{d})
 	pr.On("GetPodsForLabels", make(map[string]string)).Return([]*entities.Pod{})
@@ -52,7 +50,7 @@ func TestTuneManager_TuneNamespace_DeploymentWithNoPods(t *testing.T) {
 	cr.AssertNumberOfCalls(t, "UpdateResources", 0)
 }
 
-func TestTuneManager_TuneNamespace_UpdatePodOfDeployment(t *testing.T) {
+func TestTuneManager_TuneNamespace_UpdateContainersOfDeployment(t *testing.T) {
 	// Arrange
 	cr := new(mocks.ControllerRepository)
 	mr := new(mocks.MetricsRepository)
@@ -61,13 +59,23 @@ func TestTuneManager_TuneNamespace_UpdatePodOfDeployment(t *testing.T) {
 
 	pr := new(mocks.PodRepository)
 
-	d := entities.NewController(pr)
-
-	pod := &entities.Pod{}
+	containers := entities.ContainerMap{
+		containerName1: &entities.Container{
+			Name: containerName1,
+			Resource: entities.Resource{
+				Requests: entities.ResouceValues{
+					CPU: 10,
+				},
+				Limits: entities.ResouceValues{
+					CPU: 50,
+				},
+			},
+		},
+	}
+	d := entities.NewController(namespace1, controllerName1, containers, pr)
 
 	cr.On("FindDeploymentsInNamespace", namespace1).Return([]*entities.Controller{d})
-	pr.On("GetPodsForLabels", make(map[string]string)).Return([]*entities.Pod{pod})
-	mr.On("CPUUsedForPod", pod).Return(makeMetrics(500, 1000))
+	mr.On("CPUUsedForContainer", d, containerName1).Return(makeMetrics(500, 1000))
 	cr.On("UpdateResources", mock.AnythingOfType("*entities.Controller")).Return(nil)
 
 	// Act

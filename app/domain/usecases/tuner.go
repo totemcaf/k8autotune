@@ -1,14 +1,14 @@
 package usecases
 
 import (
-	"github.com/totemcaf/k8autotune.git/app/domain/entities"
+	"github.com/totemcaf/k8autotune/app/domain/entities"
 )
 
 // Tuner .
 type Tuner struct {
 	minimumValuesToTune int
-	maximumCPUMargin    int
-	cpuMargin           int
+	maximumCPUMargin    int64
+	cpuMargin           int64
 }
 
 // NewTuner builds a Tuner
@@ -21,12 +21,12 @@ func NewTuner() *Tuner {
 }
 
 // Tune computes the new values for the controller based on its use
-func (t *Tuner) tune(controller *entities.Controller, cpuMetrics []int) *entities.Controller {
+func (t *Tuner) tune(container *entities.Container, cpuMetrics []int64) *entities.Container {
 	if len(cpuMetrics) < t.minimumValuesToTune {
-		return controller
+		return container
 	}
 
-	cpuRequest := max(cpuMetrics)
+	cpuRequest := max64(cpuMetrics)
 	safetyMargin := cpuRequest * t.cpuMargin / 100
 	if safetyMargin > t.maximumCPUMargin {
 		cpuRequest += t.maximumCPUMargin
@@ -34,13 +34,19 @@ func (t *Tuner) tune(controller *entities.Controller, cpuMetrics []int) *entitie
 		cpuRequest += safetyMargin
 	}
 
-	cpuLimit := controller.Resource.Limits.CPU
+	cpuLimit := container.Resource.Limits.CPU
 
 	if cpuLimit <= cpuRequest {
 		cpuLimit = cpuRequest * 120 / 100
 	}
 
-	return &entities.Controller{
+	if container.Resource.Requests.CPU == cpuRequest &&
+		container.Resource.Limits.CPU == cpuLimit {
+		// No changes
+		return container
+	}
+	return &entities.Container{
+		Name: container.Name,
 		Resource: entities.Resource{
 			Requests: entities.ResouceValues{CPU: cpuRequest},
 			Limits:   entities.ResouceValues{CPU: cpuLimit},
@@ -48,7 +54,7 @@ func (t *Tuner) tune(controller *entities.Controller, cpuMetrics []int) *entitie
 	}
 }
 
-func max(a []int) int {
+func max64(a []int64) int64 {
 	if len(a) == 0 {
 		return 0
 	}
